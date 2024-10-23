@@ -1,8 +1,10 @@
 from flask import Flask, jsonify, request
 from datetime import datetime
 from pytrends.request import TrendReq
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
 
 # Google Trends API 연결
 pytrends = TrendReq(hl='ko', tz=540)
