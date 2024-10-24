@@ -23,26 +23,43 @@ def get_trends(keywords, start_date, end_date):
 
     kw_list = keywords.split(',')  # 콤마로 구분된 키워드를 리스트로 변환
     timeframe = f'{start_date} {end_date}'
-    pytrends.build_payload(kw_list, cat=0, timeframe=timeframe, geo='KR', gprop='')
+    # 국가별 데이터 초기화
+    country_data = {
+        "korea": [],
+        "us": [],
+        "canada": []
+    }
 
-    # 트렌드 데이터를 가져옴
-    data = pytrends.interest_over_time()
+    geo_map = {
+        "korea": "KR",
+        "us": "US",
+        "canada": "CA"
+    }
 
-    if data.empty:
-        return jsonify({'error': '데이터가 없습니다.'}), 404
+    for country, geo in geo_map.items():
+        # 각 국가에 대해 트렌드 데이터 요청
+        pytrends.build_payload(kw_list, cat=0, timeframe=timeframe, geo=geo, gprop='')
+        data = pytrends.interest_over_time()
 
-    averages = {}
-    for keyword in kw_list:
-        if keyword in data.columns:
-            averages[keyword] = {
-                "count": round(data[keyword].mean()),
-                "ratio": round((data[keyword] / data[kw_list].sum(axis=1) * 100).mean())  # 각 키워드의 비율 계산
-            }
+        if data.empty:
+            country_data[country] = {"country": country, "data": []}  # 데이터가 없을 경우 빈 배열 설정
+            continue
 
-    # 결과를 JSON으로 변환하여 반환
-    result = [{"word": keyword, "count": averages[keyword]["count"], "ratio": averages[keyword]["ratio"]} for keyword in kw_list]
-    
-    return jsonify(result)
+        averages = {}
+        for keyword in kw_list:
+            if keyword in data.columns:
+                averages[keyword] = {
+                    "value": round(data[keyword].mean()),
+                    "label": round((data[keyword] / data[kw_list].sum(axis=1) * 100).mean())  # 각 키워드의 비율 계산
+                }
+
+        # 결과를 country_data 배열에 담기
+        country_data[country] = {
+            "country": country,
+            "data": [{"id": keyword, "value": averages[keyword]["value"], "label": averages[keyword]["label"]} for keyword in kw_list if keyword in averages]
+        }
+
+    return jsonify(list(country_data.values()))  # 배열 형태로 반환
 
 
 
